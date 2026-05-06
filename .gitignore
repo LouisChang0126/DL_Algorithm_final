@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.idea/
+.vscode/
+
+# Data and run outputs
+data/
+*.pt
+*.pth
+*.ckpt
+
+# Keep small artifacts inside runs (csv, png, json, yaml)
+!runs/**/*.csv
+!runs/**/*.png
+!runs/**/*.json
+!runs/**/*.yaml
+
+# Kaggle credentials (never commit)
+kaggle.json

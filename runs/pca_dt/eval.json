@@ -1,0 +1,29 @@
+{
+  "best": {
+    "n_components": 64,
+    "max_depth": 10,
+    "val_acc": 0.463,
+    "train_acc": 0.5833,
+    "test_acc": 0.4328828828828829,
+    "explained_variance_ratio_sum": 0.8439440727233887
+  },
+  "grid": {
+    "n_components": [
+      64,
+      128,
+      256
+    ],
+    "max_depth": [
+      3,
+      5,
+      10,
+      20,
+      30,
+      50
+    ]
+  },
+  "model": "pca_dt",
+  "n_train": 15090,
+  "n_val": 2663,
+  "n_test": 4440
+}

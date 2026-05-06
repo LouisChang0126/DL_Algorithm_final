@@ -1,0 +1,39 @@
+seed: 42
+img_size: 256
+batch_size: 32
+num_workers: 4
+val_split: 0.15
+amp: true
+optimizer:
+  name: AdamW
+  lr: 0.0001
+  weight_decay: 0.0001
+scheduler:
+  name: cosine
+  warmup_epochs: 2
+augment:
+  hflip: true
+  rotation: 15
+  color_jitter:
+  - 0.2
+  - 0.2
+  - 0.2
+  - 0.1
+data:
+  root: data
+  train_subdir: train
+  test_subdir: test
+model: pca_dt
+experiment_name: pca_dt
+gray_size: 64
+n_components_grid:
+- 64
+- 128
+- 256
+max_depth_grid:
+- 3
+- 5
+- 10
+- 20
+- 30
+- 50

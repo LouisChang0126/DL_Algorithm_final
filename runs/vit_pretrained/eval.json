@@ -1,0 +1,9 @@
+{
+  "best_epoch": 29,
+  "best_val_acc": 0.9969958693203155,
+  "test_loss": 0.009740158566490062,
+  "test_acc": 0.997072072072072,
+  "model": "vit_base",
+  "pretrained": true,
+  "epochs": 30
+}

@@ -1,0 +1,9 @@
+{
+  "best_epoch": 22,
+  "best_val_acc": 0.9988734509951183,
+  "test_loss": 0.008204918240641587,
+  "test_acc": 0.9963963963963964,
+  "model": "resnet50",
+  "pretrained": true,
+  "epochs": 30
+}

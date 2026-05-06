@@ -1,0 +1,15 @@
+# NOTE: torch / torchvision are NOT here because Blackwell (RTX 5070 Ti / sm_120)
+# requires the nightly cu130 build, which must be installed separately:
+#   pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu130
+# Putting them here would let pip resolve the stable PyPI build, which has no
+# CUDA kernels for sm_120 and would break GPU training.
+
+timm>=1.0
+scikit-learn>=1.3
+numpy
+pandas
+matplotlib
+pyyaml
+tqdm
+kaggle
+pillow
