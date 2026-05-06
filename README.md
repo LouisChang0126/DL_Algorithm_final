@@ -63,6 +63,7 @@ python -m src.train_pca_dt --name pca_dt_smoke --quick
 ```powershell
 python scripts/run_all.py
 python scripts/plot_curves.py --all --comparison
+python scripts/gradcam_viz.py            # 6 個 deep run 各產一張 gradcam.png
 ```
 
 實測時間（RTX 5070 Ti, 統一 30 epoch）：
@@ -87,11 +88,13 @@ final/
 │   ├── train.py                 # 通用 train loop（ResNet/ViT 共用）
 │   ├── eval.py                  # 獨立 test eval
 │   ├── train_pca_dt.py          # PCA + DT pipeline
+│   ├── gradcam.py               # ResNet & ViT 通用 Grad-CAM
 │   └── models/{resnet,vit}.py
 ├── scripts/
 │   ├── download_data.py         # Kaggle API
 │   ├── run_all.py               # 跑全部 7 實驗
-│   └── plot_curves.py           # 產 curves.png + comparison.png
+│   ├── plot_curves.py           # 產 curves.png + comparison.png
+│   └── gradcam_viz.py           # 為 6 個 deep run 產 gradcam.png
 ├── data/                        # ← Kaggle 下載到這
 └── runs/<exp>/...               # ← 訓練輸出
 ```

@@ -113,6 +113,23 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
   - ResNet50 的 +1.80% 主要來自「容量大但還沒練熟」的劣勢 — 給更多 epoch 應該能縮小。
   - ViT-base 的 +1.80% 一部分來自架構需要的 inductive bias 透過預訓練「補」上 — 即使 scratch 給更多 epoch，CNN 的 locality 優勢仍會保留一段時間。
 
+### 5.5 Grad-CAM 視覺化
+
+對 6 個 deep learning run 都產出了 Grad-CAM，每個 run 一張 2×5 的 grid（10 類各挑一張被「正確分類」的 test 圖）。完整圖檔在 `runs/<exp>/gradcam.png`。
+
+**實作細節**：
+- ResNet：hook `model.layer4`（最後一個 conv stage 的輸出），標準 Grad-CAM。
+- ViT-base/16：hook `model.blocks[-1].norm1`（最後 transformer block 的 LayerNorm 輸入），把 (B, N+1, C) 的 token 序列丟掉 CLS 後 reshape 成 (B, C, 16, 16) 再走同樣的 Grad-CAM 數學。
+- 顏色：jet colormap 疊在原圖（55% 原圖 + 45% heatmap）。
+
+**觀察**：
+- **ResNet pretrained**（[runs/resnet18_pretrained/gradcam.png](runs/resnet18_pretrained/gradcam.png)、[runs/resnet50_pretrained/gradcam.png](runs/resnet50_pretrained/gradcam.png)）：注意力是**集中、平滑的橢圓型熱區**，幾乎都落在葉片本體中央，幾乎不看背景。pretrained 後對 leaf 的 saliency 很乾淨，符合「object-centric」直覺。
+- **ResNet scratch**（[runs/resnet18_scratch/gradcam.png](runs/resnet18_scratch/gradcam.png)、[runs/resnet50_scratch/gradcam.png](runs/resnet50_scratch/gradcam.png)）：熱區較大、邊界較糊，偶爾會延伸到背景或包含整張圖的角落 — 顯示 scratch 模型雖然分類正確，但學到的 representation 比較「不集中」。
+- **ViT pretrained**（[runs/vit_pretrained/gradcam.png](runs/vit_pretrained/gradcam.png)）：與 ResNet 完全不同的型態 — **稀疏、點狀的熱點**（一塊塊小斑點），常落在「斑點型病害」的具體斑點位置（如 `septoria_leaf_spot`、`twospotted_spider_mite`）。這呼應 ViT 的 self-attention 本質：每個 patch token 互相關注，最終可以選出少數關鍵 patches。
+- **ViT scratch**（[runs/vit_scratch/gradcam.png](runs/vit_scratch/gradcam.png)）：熱點位置較雜，部分圖完全找不到清楚的關注區，與 ViT scratch test acc 較低（97.91%）一致。
+
+> 解讀：Grad-CAM 不只是「看模型在看哪」的 sanity check，也讓我們看到**架構差異會反映在注意力的形狀**上：CNN 是「看一塊區域」，ViT 是「選幾個 patch」。兩者最後 acc 接近，但 representation 風格完全不同。
+
 ## 6. 結論
 
 1. **這個資料集難度不高**：6 個 deep model 全部 ≥ 97.8% test acc。任何 ResNet 或 ViT 配上 ImageNet pretrained，30 epoch 就能交出 99.6%+ 的可用模型。
@@ -133,3 +150,4 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
 - 7 runs 的 test_acc 長條圖：[runs/test_acc_bar.png](runs/test_acc_bar.png)
 - PCA+DT grid heatmap：[runs/pca_dt/grid.png](runs/pca_dt/grid.png)
 - PCA+DT depth ablation：[runs/pca_dt/depth_curve.png](runs/pca_dt/depth_curve.png)
+- 6 deep runs 的 Grad-CAM 視覺化：`runs/<exp>/gradcam.png`
