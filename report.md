@@ -113,7 +113,37 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
   - ResNet50 的 +1.80% 主要來自「容量大但還沒練熟」的劣勢 — 給更多 epoch 應該能縮小。
   - ViT-base 的 +1.80% 一部分來自架構需要的 inductive bias 透過預訓練「補」上 — 即使 scratch 給更多 epoch，CNN 的 locality 優勢仍會保留一段時間。
 
-### 5.5 Grad-CAM 視覺化
+### 5.5 Augmentation 消融實驗
+
+為了釐清「note.md 列出的 4 種 augmentation 各自貢獻多少」，以 **ResNet18 pretrained / 30 epoch** 為 base，逐層加 augmentation。`full` 一列直接重用主表中 [#2 resnet18_pretrained](runs/resnet18_pretrained/eval.json) 的數字，避免重複訓練。
+
+| level         | resize | hflip | rotation(15°) | color_jitter | best_epoch | best_val_acc | test_acc   | Δ test vs none |
+|---------------|--------|-------|---------------|--------------|-----------:|-------------:|-----------:|---------------:|
+| none          | ✓      |       |               |              | 22         | 0.9944       | 0.9948     | (base)         |
+| + hflip       | ✓      | ✓     |               |              | 30         | 0.9944       | 0.9973     | **+0.0025**    |
+| + rotation    | ✓      | ✓     | ✓             |              | 27         | **0.9962**   | **0.9975** | **+0.0027**    |
+| full          | ✓      | ✓     | ✓             | ✓            | 26         | 0.9959       | 0.9962     | +0.0014        |
+
+完整曲線見 [runs/ablation_aug.png](runs/ablation_aug.png)、原始數字見 [runs/ablation_aug_table.csv](runs/ablation_aug_table.csv)。
+
+**觀察**：
+
+1. **`none` 已經有 99.48% test_acc**：pretrained ResNet18 + 15k 張訓練圖、僅 resize 就能拿到 99.48%。這呼應第 6 點的結論「這個資料集底子簡單」— augmentation 在這裡只是錦上添花，不是必要條件。
+
+2. **hflip 是邊際貢獻最大的一層**：val_acc 沒動（都是 0.9944），但 test_acc +0.25%、test_loss 從 0.0178 降到 0.0092（幾乎砍半）。意思是 hflip 沒拉高 val 上限，但顯著縮小 train/val/test 之間的 generalization gap — 模型更不挑「左右朝向」這種偽特徵。
+
+3. **rotation 帶來的邊際 ≈ 0**：加上 ±15° 旋轉後 val_acc 從 0.9944 → 0.9962（+0.18%）、test_acc 從 0.9973 → 0.9975（+0.02%）。val 上漲、test 幾乎不動，可解讀為 rotation 主要讓 val/train split 之間更公平，對「真實 test 分布」沒額外幫助。
+
+4. **`full` 反而比 `hflip_rot` 略差**（test_acc: 0.9962 vs 0.9975, **−0.13%**）：加上 `ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1)` 之後居然倒退。最直接的解釋是 **本任務的判別特徵裡有「顏色」這條線索**（`healthy` 葉片飽和度與 `yellow_leaf_curl_virus`、`mosaic_virus` 不同），ColorJitter 把這條線索擾亂後反而抹掉資訊。`hue=0.1` 對葉片色相已經偏激進，是最可疑的一項。
+
+5. **best_epoch 模式**：
+   - `none` 在 epoch 22 就 best，之後 train_acc 直奔 1.0 但 val 停滯 — 沒 augmentation 的典型早飽和。
+   - `hflip` best 落在 epoch 30（最後一個），val 一路爬升 — augmentation 在用「無限大」的訓練分布延緩收斂。
+   - `hflip_rot` 與 `full` 在 epoch 26–27 收斂，介於兩者之間。
+
+**結論**：對這個資料集而言，**最佳 augmentation 配置是 `hflip + rotation`**（test_acc 99.75%），不是 note.md 原列的「full」（99.62%）。`hflip` 是 must-have，`rotation` 是 nice-to-have，`color_jitter` 在這個顏色敏感的任務上是 **負貢獻** — 主流「越多 augmentation 越好」的直覺在此不適用，是這次 ablation 揭露的核心發現。
+
+### 5.6 Grad-CAM 視覺化
 
 對 6 個 deep learning run 都產出了 Grad-CAM，每個 run 一張 2×5 的 grid（10 類各挑一張被「正確分類」的 test 圖）。完整圖檔在 `runs/<exp>/gradcam.png`。
 
@@ -137,9 +167,11 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
 3. **預訓練紅利明顯**：對 R18 +1.04%、R50 / ViT 都 +1.80%。預訓練不只贏 acc，更贏「收斂速度」：pretrained 22–29 epoch 即 best；scratch 26–28 epoch 仍在上升。同樣 30 epoch 預算下 pretrained 必勝。
 4. **CNN vs Transformer 在 30 epoch 下幾乎打平**：pretrained 差 0.07%、scratch 差 0.07%（且方向是 ViT 微勝）— 與「Transformer 在小資料下需要更多 epoch」的常見論述不完全吻合，本實驗在 30 epoch 內 ViT 的收斂效率與 ResNet50 相當。
 5. **PCA + DT 是合適的「下界對照」**：43% test acc 證明傳統 ML pipeline 確實能分一部分病害，但與 DL 差距 −56%，讓 deep learning 的價值具體可見。
-6. **推薦選擇**：
+6. **Augmentation 不是越多越好**（§5.5 ablation 結論）：對這個顏色敏感的任務，`hflip + rotation` 的 99.75% 反而打贏「全 augmentation」的 99.62%。`color_jitter`（特別是 hue 擾動）在這個資料集上是負貢獻 — 違反直覺但合理：判別線索本身就含顏色。
+7. **推薦選擇**：
    - **絕對最佳**：ViT-base pretrained（99.71%）
    - **最佳 cost / accuracy**：ResNet18 pretrained（11M 參數、~7.5 min 訓完、99.62%）
+   - **若只在乎 ResNet18 上限**：ResNet18 pretrained + `hflip+rotation`（無 color_jitter）可拉到 99.75%
 
 ---
 
@@ -150,4 +182,5 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
 - 7 runs 的 test_acc 長條圖：[runs/test_acc_bar.png](runs/test_acc_bar.png)
 - PCA+DT grid heatmap：[runs/pca_dt/grid.png](runs/pca_dt/grid.png)
 - PCA+DT depth ablation：[runs/pca_dt/depth_curve.png](runs/pca_dt/depth_curve.png)
+- Augmentation 消融實驗：[runs/ablation_aug.png](runs/ablation_aug.png)、[runs/ablation_aug_table.csv](runs/ablation_aug_table.csv)
 - 6 deep runs 的 Grad-CAM 視覺化：`runs/<exp>/gradcam.png`

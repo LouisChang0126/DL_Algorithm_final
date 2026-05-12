@@ -1,0 +1,5 @@
+aug_level,run_dir,best_epoch,best_val_acc,test_acc
+none,runs/ablation_aug_none,22,0.9944,0.9948
+hflip,runs/ablation_aug_hflip,30,0.9944,0.9973
+hflip_rot,runs/ablation_aug_hflip_rot,27,0.9962,0.9975
+full,runs/resnet18_pretrained,26,0.9959,0.9962

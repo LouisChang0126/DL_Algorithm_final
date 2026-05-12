@@ -66,6 +66,26 @@ python scripts/plot_curves.py --all --comparison
 python scripts/gradcam_viz.py            # 6 個 deep run 各產一張 gradcam.png
 ```
 
+## 消融實驗 — Augmentation 拆解
+
+以 ResNet18 pretrained 為 base，逐層加 augmentation：
+`none → +hflip → +rotation → +color_jitter (full)`。
+其中 `full` 直接重用 `runs/resnet18_pretrained/`，只跑前 3 個 level：
+
+```powershell
+python scripts/run_ablation.py            # 3 個新 run，~22 min
+python scripts/plot_ablation.py           # 產 runs/ablation_aug.png + table.csv
+```
+
+也可直接呼叫 `src.train` 控制 augmentation：
+
+```powershell
+python -m src.train --model resnet18 --pretrained --name foo --epochs 30 --aug none
+python -m src.train --model resnet18 --pretrained --name foo --epochs 30 --aug hflip
+python -m src.train --model resnet18 --pretrained --name foo --epochs 30 --aug hflip_rot
+python -m src.train --model resnet18 --pretrained --name foo --epochs 30 --aug full
+```
+
 實測時間（RTX 5070 Ti, 統一 30 epoch）：
 - pca_dt：~1.5 分鐘
 - ResNet18 pretrained / scratch：~7.5 分鐘 each

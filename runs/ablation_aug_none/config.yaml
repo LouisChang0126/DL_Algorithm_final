@@ -1,0 +1,26 @@
+seed: 42
+img_size: 256
+batch_size: 32
+num_workers: 4
+val_split: 0.15
+amp: true
+optimizer:
+  name: AdamW
+  lr: 0.0001
+  weight_decay: 0.0001
+scheduler:
+  name: cosine
+  warmup_epochs: 2
+augment:
+  hflip: false
+  rotation: 0
+  color_jitter: null
+data:
+  root: data
+  train_subdir: train
+  test_subdir: test
+model: resnet18
+pretrained: true
+epochs: 30
+experiment_name: ablation_aug_none
+aug_level: none

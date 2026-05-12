@@ -1,0 +1,10 @@
+{
+  "best_epoch": 27,
+  "best_val_acc": 0.9962448366503943,
+  "test_loss": 0.008826044336096406,
+  "test_acc": 0.9975225225225225,
+  "model": "resnet18",
+  "pretrained": true,
+  "epochs": 30,
+  "aug_level": "hflip_rot"
+}

@@ -32,11 +32,40 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch_size", type=int, default=None)
     p.add_argument("--lr", type=float, default=None)
     p.add_argument("--no_amp", action="store_true")
+    p.add_argument("--aug", type=str, default=None,
+                   choices=["none", "hflip", "hflip_rot", "full"],
+                   help="override augmentation level (for ablation). "
+                        "none = resize only; hflip = + horizontal flip; "
+                        "hflip_rot = + rotation; full = + color_jitter (yaml default).")
     p.add_argument("--save_every_epoch", action="store_true",
                    help="save ckpt for every epoch (note.md original ask). "
                         "Off by default — only best.pt + last.pt are kept, "
                         "because per-epoch ckpts for 7 runs require ~130 GB.")
     return p.parse_args()
+
+
+def apply_aug_override(augment_cfg: dict, level: str) -> dict:
+    """Return a new augment_cfg with progressive augmentation levels.
+
+    Used by the augmentation-ablation experiments so the YAML config
+    stays the 'full' baseline and CLI overrides peel layers off.
+    """
+    cfg = dict(augment_cfg)
+    if level == "none":
+        cfg["hflip"] = False
+        cfg["rotation"] = 0
+        cfg["color_jitter"] = None
+    elif level == "hflip":
+        cfg["hflip"] = True
+        cfg["rotation"] = 0
+        cfg["color_jitter"] = None
+    elif level == "hflip_rot":
+        cfg["hflip"] = True
+        cfg["rotation"] = augment_cfg.get("rotation", 15) or 15
+        cfg["color_jitter"] = None
+    elif level == "full":
+        pass
+    return cfg
 
 
 def load_config(path: str) -> dict:
@@ -113,6 +142,8 @@ def main() -> None:
         cfg["optimizer"]["lr"] = args.lr
     if args.no_amp:
         cfg["amp"] = False
+    if args.aug is not None:
+        cfg["augment"] = apply_aug_override(cfg["augment"], args.aug)
 
     set_seed(cfg["seed"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -127,6 +158,7 @@ def main() -> None:
         "pretrained": args.pretrained,
         "epochs": args.epochs,
         "experiment_name": args.name,
+        "aug_level": args.aug or "full",
     })
     with (run_dir / "config.yaml").open("w", encoding="utf-8") as f:
         yaml.safe_dump(effective, f, sort_keys=False, allow_unicode=True)
@@ -239,6 +271,7 @@ def main() -> None:
         "model": args.model,
         "pretrained": args.pretrained,
         "epochs": args.epochs,
+        "aug_level": args.aug or "full",
     }, run_dir / "eval.json")
 
 
