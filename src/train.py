@@ -31,6 +31,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--epochs", type=int, required=True)
     p.add_argument("--batch_size", type=int, default=None)
     p.add_argument("--lr", type=float, default=None)
+    p.add_argument("--img_size", type=int, default=None,
+                   help="override input resolution (for img-size ablation). "
+                        "Default reads from yaml (256). ResNet is size-agnostic; "
+                        "ViT requires 224 or 384.")
     p.add_argument("--no_amp", action="store_true")
     p.add_argument("--aug", type=str, default=None,
                    choices=["none", "hflip", "hflip_rot", "full"],
@@ -140,6 +144,8 @@ def main() -> None:
         cfg["batch_size"] = args.batch_size
     if args.lr is not None:
         cfg["optimizer"]["lr"] = args.lr
+    if args.img_size is not None:
+        cfg["img_size"] = args.img_size
     if args.no_amp:
         cfg["amp"] = False
     if args.aug is not None:
@@ -272,6 +278,7 @@ def main() -> None:
         "pretrained": args.pretrained,
         "epochs": args.epochs,
         "aug_level": args.aug or "full",
+        "img_size": cfg["img_size"],
     }, run_dir / "eval.json")
 
 

@@ -143,7 +143,43 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
 
 **結論**：對這個資料集而言，**最佳 augmentation 配置是 `hflip + rotation`**（test_acc 99.75%），不是 note.md 原列的「full」（99.62%）。`hflip` 是 must-have，`rotation` 是 nice-to-have，`color_jitter` 在這個顏色敏感的任務上是 **負貢獻** — 主流「越多 augmentation 越好」的直覺在此不適用，是這次 ablation 揭露的核心發現。
 
-### 5.6 Grad-CAM 視覺化
+### 5.6 Input image size 消融實驗
+
+ResNet 用 adaptive avg pool 收尾，本身 size-agnostic（任何輸入大小都可跑），但 input resolution 直接決定「能看到多細的紋路」與「每個 epoch 多貴」。以 **ResNet18 pretrained / 30 epoch / 其他超參完全固定** 為 base，掃 `img_size ∈ {128, 192, 224, 256, 384}`。256px 直接重用主表的 [#2 resnet18_pretrained](runs/resnet18_pretrained/eval.json)。
+
+| img_size | best_epoch | best_val_acc | test_acc   | test_loss | avg epoch time | Δ test vs 256 |
+|---------:|-----------:|-------------:|-----------:|----------:|---------------:|--------------:|
+| 128      | 23         | 0.9944       | 0.9930     | 0.0245    | 7.1 s          | −0.0032       |
+| 192      | 22         | 0.9940       | 0.9953     | 0.0142    | 10.9 s         | −0.0009       |
+| 224      | 27         | **0.9970**   | 0.9955     | 0.0175    | 12.9 s         | −0.0007       |
+| 256      | 26         | 0.9959       | 0.9962     | 0.0110    | 15.1 s         | (base)        |
+| 384      | 26         | **0.9970**   | **0.9986** | **0.0065**| 31.8 s         | **+0.0024**   |
+
+完整曲線見 [runs/ablation_imgsize.png](runs/ablation_imgsize.png)、原始數字見 [runs/ablation_imgsize_table.csv](runs/ablation_imgsize_table.csv)。
+
+**觀察**：
+
+1. **128px 明顯不夠**：test_acc 0.9930 是 5 個 size 裡最差的，比 256 退 0.32%。葉片病害的判別線索（小斑點、葉脈紋理）在 128×128 下被嚴重模糊化，模型必須從更粗的全域特徵硬猜，自然吃虧。
+
+2. **192–256 形成一段平台**：test_acc 0.9953 / 0.9955 / 0.9962，三者差距 < 0.1% 落在雜訊內。224 與 384 並列 best_val_acc 0.9970，但 224 的 test_acc（0.9955）反而比 256（0.9962）略低 — 顯示「val 高」未必「test 高」，這個資料集 val/test 的相關性沒那麼緊。
+
+3. **384px 拿到全 11 個深度 run 的最佳成績**（test_acc **0.9986**），且 test_loss 從 256 的 0.0110 降到 0.0065（**砍 41%**）。意思是 384 不只 acc 更高，連對預測的「信心」都顯著更穩，沒有靠運氣壓線。
+   - 相對誤差解讀：256 的 test 錯誤率 0.38%（4440 張裡錯 17 張）→ 384 的 0.14%（錯 6 張），**錯誤率降 63%**。在 99%+ 的尾端，這個邊際很值錢。
+
+4. **Cost ~ size² 成立**：epoch time 從 128 → 384 是 7.1 → 31.8s，比例 4.5×；面積比 9×；不到 9× 是因為 PyTorch / cuDNN 在 GPU 上有 launch overhead，小 size 利用率不滿。**384 比 256 貴 2.1×**，但換來 +0.24% test_acc + test_loss 砍半。
+
+5. **「ImageNet pretrained 是 224 訓的，所以 224 最好」這個直覺在此不成立** — 224 在 val 上的確很強（0.9970），但 384 的 test 表現遠超。原因：本任務有大量「細粒度紋路」差異（splash 型 vs spot 型 vs leaf-curl 型），ImageNet pretrained 的 backbone 在 224 學的低層 conv kernel 雖然是 224-tuned，但 ResNet 的全卷積特性讓它在 384 直接拿到 2.25× 的「有效感受野細節密度」。
+
+**結論**：
+- **若以 test_acc 為唯一目標**：用 **384px**，可在 ResNet18 上拉到 **99.86%**，全 11 個深度 run 的最佳。
+- **最佳 cost / accuracy**：仍是 **256px**（main 表中的 baseline），訓 15s/epoch、99.62%、堪用。
+- **128px 是明確的「太小」**：在這個任務上不要往下走。
+
+這個 ablation 與 §5.5（augmentation）配合看出一個共同主題：**「加大什麼」要看任務本身的判別線索在哪**。本資料集判別線索是 **顏色 + 細紋路**，所以：
+- 提高解析度（384）→ 直接強化「細紋路」這條軸 → +0.24%。
+- 加入 color_jitter → 削弱「顏色」這條軸 → −0.13%。
+
+### 5.7 Grad-CAM 視覺化
 
 對 6 個 deep learning run 都產出了 Grad-CAM，每個 run 一張 2×5 的 grid（10 類各挑一張被「正確分類」的 test 圖）。完整圖檔在 `runs/<exp>/gradcam.png`。
 
@@ -168,10 +204,12 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
 4. **CNN vs Transformer 在 30 epoch 下幾乎打平**：pretrained 差 0.07%、scratch 差 0.07%（且方向是 ViT 微勝）— 與「Transformer 在小資料下需要更多 epoch」的常見論述不完全吻合，本實驗在 30 epoch 內 ViT 的收斂效率與 ResNet50 相當。
 5. **PCA + DT 是合適的「下界對照」**：43% test acc 證明傳統 ML pipeline 確實能分一部分病害，但與 DL 差距 −56%，讓 deep learning 的價值具體可見。
 6. **Augmentation 不是越多越好**（§5.5 ablation 結論）：對這個顏色敏感的任務，`hflip + rotation` 的 99.75% 反而打贏「全 augmentation」的 99.62%。`color_jitter`（特別是 hue 擾動）在這個資料集上是負貢獻 — 違反直覺但合理：判別線索本身就含顏色。
-7. **推薦選擇**：
-   - **絕對最佳**：ViT-base pretrained（99.71%）
-   - **最佳 cost / accuracy**：ResNet18 pretrained（11M 參數、~7.5 min 訓完、99.62%）
-   - **若只在乎 ResNet18 上限**：ResNet18 pretrained + `hflip+rotation`（無 color_jitter）可拉到 99.75%
+7. **Input resolution 仍有可拉空間**（§5.6 ablation 結論）：把 ResNet18 pretrained 的 input 從 256 提到 **384px**，test_acc 拉到 **99.86%**、test_loss 砍 41%，是全 11 個深度 run 的最佳成績。代價是 epoch 時間 2.1×。「ImageNet 是 224 訓的所以用 224 最好」在這個細紋路任務上不成立。
+8. **推薦選擇**：
+   - **絕對最佳（含 ablation）**：ResNet18 pretrained @ 384px（99.86%、~16 min 訓完）
+   - **原主表最佳**：ViT-base pretrained @ 256px（99.71%）
+   - **最佳 cost / accuracy**：ResNet18 pretrained @ 256px（11M 參數、~7.5 min 訓完、99.62%）
+   - **若只在乎 ResNet18 @ 256 上限**：ResNet18 pretrained + `hflip+rotation`（無 color_jitter）可拉到 99.75%
 
 ---
 
@@ -183,4 +221,5 @@ PCA grid 觀察（見 [runs/pca_dt/grid.png](runs/pca_dt/grid.png)、[runs/pca_d
 - PCA+DT grid heatmap：[runs/pca_dt/grid.png](runs/pca_dt/grid.png)
 - PCA+DT depth ablation：[runs/pca_dt/depth_curve.png](runs/pca_dt/depth_curve.png)
 - Augmentation 消融實驗：[runs/ablation_aug.png](runs/ablation_aug.png)、[runs/ablation_aug_table.csv](runs/ablation_aug_table.csv)
+- Input image size 消融實驗：[runs/ablation_imgsize.png](runs/ablation_imgsize.png)、[runs/ablation_imgsize_table.csv](runs/ablation_imgsize_table.csv)
 - 6 deep runs 的 Grad-CAM 視覺化：`runs/<exp>/gradcam.png`

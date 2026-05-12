@@ -1,0 +1,11 @@
+{
+  "best_epoch": 22,
+  "best_val_acc": 0.9939917386406308,
+  "test_loss": 0.014244953120077798,
+  "test_acc": 0.9952702702702703,
+  "model": "resnet18",
+  "pretrained": true,
+  "epochs": 30,
+  "aug_level": "full",
+  "img_size": 192
+}

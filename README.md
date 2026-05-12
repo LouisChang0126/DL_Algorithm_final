@@ -66,6 +66,21 @@ python scripts/plot_curves.py --all --comparison
 python scripts/gradcam_viz.py            # 6 個 deep run 各產一張 gradcam.png
 ```
 
+## 消融實驗 — Input image size
+
+以 ResNet18 pretrained 為 base，掃描 `img_size ∈ {128, 192, 224, 384}`，256px 重用 `runs/resnet18_pretrained/`：
+
+```powershell
+python scripts/run_imgsize_ablation.py    # 4 個新 run，~22 min
+python scripts/plot_imgsize_ablation.py   # 產 runs/ablation_imgsize.png + table.csv
+```
+
+也可直接呼叫 `src.train` 指定 size：
+
+```powershell
+python -m src.train --model resnet18 --pretrained --name foo --epochs 30 --img_size 224
+```
+
 ## 消融實驗 — Augmentation 拆解
 
 以 ResNet18 pretrained 為 base，逐層加 augmentation：

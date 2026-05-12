@@ -1,0 +1,6 @@
+img_size,run_dir,best_epoch,best_val_acc,test_acc,avg_epoch_time_sec
+128,runs/ablation_imgsize_128,23,0.9944,0.9930,7.1
+192,runs/ablation_imgsize_192,22,0.9940,0.9953,10.9
+224,runs/ablation_imgsize_224,27,0.9970,0.9955,12.9
+256,runs/resnet18_pretrained,26,0.9959,0.9962,15.1
+384,runs/ablation_imgsize_384,26,0.9970,0.9986,31.8
